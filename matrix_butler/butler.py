@@ -29,8 +29,7 @@ class MatrixButler:
 
     @staticmethod
     def create(parent_directory, zone_system, fortran_max_zones):
-        """
-        Creates a new (or clears and initializes and existing) MatrixButler.
+        """Creates a new (or clears and initializes and existing) MatrixButler.
 
         Args:
             parent_directory (unicode): The parent directory in which to keep the Butler.
@@ -58,8 +57,8 @@ class MatrixButler:
             existing_is_compatible = fortran_max_zones == fortran_max_zones_existing and zone_system.equals(
                 zone_system_existing)
             if not existing_is_compatible:
-                msg = "Existing matrix cache not compatible with current zone system and will be cleared of any" \
-                      " stored matrix files. Cache directory is '%s'" % parent_directory
+                msg = 'Existing matrix cache not compatible with current zone system and will be cleared of any ' \
+                      'stored matrix files. Cache directory is `%s`' % parent_directory
                 warn(ButlerOverwriteWarning(msg))
 
                 for fn in os.listdir(butler_path):
@@ -157,23 +156,24 @@ class MatrixButler:
 
     @staticmethod
     def connect(parent_directory):
-        """
-        Connect to an existing MatrixButler, without initializing it
+        """Connect to an existing MatrixButler, without initializing it
 
         Args:
             parent_directory (unicode): The parent directory in which to find the MatrixButler.
 
         Returns:
-            IOError if a MatrixButler cannot be found at the given parent directory.
+            MatrixButler instance.
 
+        Raises:
+            IOError: if a MatrixButler cannot be found at the given parent directory.
         """
         butler_path = path.join(parent_directory, MatrixButler._SUBDIRECTORY_NAME)
         if not os.path.exists(butler_path):
-            raise IOError("No matrix butler found at '%s'" % parent_directory)
+            raise IOError('No matrix butler found at `%s`' % parent_directory)
 
         dbfile = path.join(butler_path, MatrixButler._DB_NAME)
         if not os.path.exists(dbfile):
-            raise IOError("No matrix butler found at '%s'" % parent_directory)
+            raise IOError('No matrix butler found at `%s`' % parent_directory)
 
         db = sqlite.connect(dbfile)
         db.row_factory = sqlite.Row
@@ -219,9 +219,7 @@ class MatrixButler:
         return MatrixEntry(item['id'], item['description'], item['timestamp'], item['type'])
 
     def to_frame(self):
-        """
-        Returns a representation of the butler's contents as a pandas.DataFrame
-        """
+        """Returns a representation of the butler's contents as a pandas DataFrame"""
         uids, descriptions, timestamps, types = [], [], [], []
         for entry in self:
             uids.append(entry.uid)
@@ -271,12 +269,12 @@ class MatrixButler:
 
     @contextmanager
     def batch_operations(self):
-        """
-        Context-manager for writing several matrices in one batch. Reduces write time per matrix by committing changes
-        to the DB at the end of the batch write. The time savings can be quite significant, as the DB-write is normally
-        50% of the time per matrix write.
+        """Context-manager for writing several matrices in one batch. Reduces write time per matrix by committing 
+        changes to the DB at the end of the batch write. The time savings can be quite significant, as the DB-write is 
+        normally 50% of the time per matrix write.
 
-        Yields: None
+        Yields: 
+            None
         """
         # This snippet is just in case this function is called within its own context (e.g. someone turns on
         # batch mode while it's already on).
@@ -293,16 +291,15 @@ class MatrixButler:
             self._committing = True
 
     def lookup_numbers(self, unique_id, squeeze=True):
-        """
-        Looks up file number(s) (e.g. 50 corresponds to "mf50.bin") of a given matrix.
+        """Looks up file number(s) (e.g. 50 corresponds to "mf50.bin") of a given matrix.
 
         Args:
             unique_id (str): The ID of the matrix to look up
             squeeze (bool): If True, and only one matrix number corresponds to the unique ID, then the result will
                 be a single integer. Otherwise, a list of integers is returned.
 
-        Returns: Int or List[int], depending on results and `squeeze`
-
+        Returns: 
+            Int or List[int], depending on results and `squeeze`
         """
 
         sql = """
@@ -321,16 +318,16 @@ class MatrixButler:
         return numbers
 
     def is_sliced(self, unique_id):
-        """
-        Checks if a matrix is sliced on-disk or not.
+        """Checks if a matrix is sliced on-disk or not.
 
         Args:
             unique_id (str): The ID of the matrix to checl
 
-        Returns (bool): True if matrix is sliced, False otherwise.
+        Returns: 
+            bool: True if matrix is sliced, False otherwise.
 
-        Raises: KeyError if unique_id is not in the butler.
-
+        Raises: 
+            KeyError: if unique_id is not in the butler.
         """
         return len(self.lookup_numbers(unique_id, squeeze=False)) > 1
 
@@ -430,8 +427,7 @@ class MatrixButler:
             to_fortran(remainder, remainder_file, self._max_zones_fortran, min_index=min_index, force_square=False)
 
     def init_matrix(self, unique_id, description="", type_name="", fill=True, n_slices=1, partition=False):
-        """
-        Registers a new (or zeros an old) matrix with the butler.
+        """Registers a new (or zeros an old) matrix with the butler.
 
         Args:
             unique_id (str): The unique identifier for this matrix.
@@ -458,17 +454,17 @@ class MatrixButler:
         self._write_matrix_record(unique_id, numbers, description, type_name)
 
     def load_matrix(self, unique_id, tall=False):
-        """
-        Gets a matrix from the butler, optionally saving into an Emmebank.
+        """Gets a matrix from the butler, optionally saving into an Emmebank.
 
         Args:
             unique_id (str): The name you gave to the butler for safekeeping.
             tall (bool):
 
-        Returns: DataFrame or None, depending on whether `target_mfid` is given.
+        Returns: 
+            DataFrame or None, depending on whether `target_mfid` is given.
 
         Raises:
-            KeyError if unique_id is not in the butler.
+            KeyError: if unique_id is not in the butler.
         """
 
         is_sliced = self.is_sliced(unique_id)
@@ -489,8 +485,7 @@ class MatrixButler:
 
     def save_matrix(self, dataframe_or_mfid, unique_id, description="", type_name="",  n_slices=1, partition=False,
                     reindex=True, fill_value=0.0):
-        """
-        Passes a matrix to the butler for safekeeping.
+        """Passes a matrix to the butler for safekeeping.
 
         Args:
             dataframe_or_mfid (DataFrame or str): Specifies the matrix to save. If basestring, it is assumed to
@@ -527,16 +522,18 @@ class MatrixButler:
         self._write_matrix_record(unique_id, numbers, description, type_name)
 
     def matrix_metadata(self, unique_id):
-        """
-        Looks up a single matrix record and returns its metadata (description, type, timestamp) in a dictionary
+        """Looks up a single matrix record and returns its metadata (description, type, timestamp) in a dictionary
 
         Args:
             unique_id (str): The unique ID of the matrix to lookup
 
-        Returns: Dict corresponding to the matrix record. Keys are 'id', 'description', 'timestamp', and 'type'
+        Returns: 
+            Dict: corresponding to the matrix record. Keys are 'id', 'description', 'timestamp', and 'type'
 
-        Raises: KeyError if unique ID not in the butler.
+        Raises: 
+            KeyError: if unique ID not in the butler.
         """
+
         sql = """
         SELECT id, description, type, timestamp FROM matrices
         WHERE id=?;
@@ -547,15 +544,13 @@ class MatrixButler:
         return dict(row)
 
     def delete_matrix(self, unique_id):
-        """
-        Deletes a matrix from the butler's directory
+        """Deletes a matrix from the butler's directory
 
         Args:
             unique_id (str): The unique identifier of the matrix to delete.
 
         Raises:
-            KeyError if unique_id cannot be found.
-
+            KeyError: if unique_id cannot be found.
         """
 
         numbers = self.lookup_numbers(unique_id, squeeze=False)

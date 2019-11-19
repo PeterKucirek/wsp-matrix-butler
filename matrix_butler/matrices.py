@@ -1,10 +1,11 @@
 import numpy as np
 import pandas as pd
+from pkg_resources import parse_version
+LEGACY_PANDAS = parse_version(pd.__version__) < parse_version('0.24')
 
 
 def coerce_matrix(matrix, allow_raw=True, force_square=True):
-    """
-    Infers a NumPy array from given input
+    """Infers a NumPy array from given input
 
     Args:
         matrix:
@@ -12,8 +13,7 @@ def coerce_matrix(matrix, allow_raw=True, force_square=True):
         force_square (bool, optional): Defaults to ``True``.
 
     Returns:
-        numpy.ndarray:
-            A 2D ndarray of type float32
+        numpy.ndarray: A 2D ndarray of type float32
     """
     if isinstance(matrix, pd.DataFrame):
         if force_square:
@@ -25,7 +25,10 @@ def coerce_matrix(matrix, allow_raw=True, force_square=True):
 
         union = wide.index | wide.columns
         wide = wide.reindex_axis(union, fill_value=0.0, axis=0).reindex_axis(union, fill_value=0.0, axis=1)
-        return wide.values.astype(np.float32)
+        if LEGACY_PANDAS:
+            return wide.values.astype(np.float32)
+        else:
+            return wide.to_numpy(copy=True).astype(np.float32)
 
     if not allow_raw:
         raise NotImplementedError()
