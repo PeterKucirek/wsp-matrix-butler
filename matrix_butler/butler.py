@@ -265,7 +265,7 @@ class MatrixButler:
             self._connection.commit()
 
     def _matrix_file(self, n):
-        return path.join(self._path, "mf%s.%s" % (n, MatrixButler._MATRIX_EXTENSION))
+        return path.join(self._path, "mf%s%s" % (n, MatrixButler._MATRIX_EXTENSION))
 
     @contextmanager
     def batch_operations(self):
