@@ -12,7 +12,7 @@ from .api import ButlerOverwriteWarning, MatrixEntry
 from .matrices import expand_array, to_fortran, read_fortran_rectangle, coerce_matrix
 
 
-class MatrixButler:
+class MatrixButler(object):
 
     _MATRIX_EXTENSION = '.bin'
     _SUBDIRECTORY_NAME = 'emmebin'
