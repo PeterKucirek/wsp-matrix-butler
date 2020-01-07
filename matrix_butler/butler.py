@@ -12,7 +12,7 @@ from .api import ButlerOverwriteWarning, MatrixEntry
 from .matrices import expand_array, to_fortran, read_fortran_rectangle, coerce_matrix
 
 
-class MatrixButler:
+class MatrixButler(object):
 
     _MATRIX_EXTENSION = '.bin'
     _SUBDIRECTORY_NAME = 'emmebin'
@@ -213,7 +213,8 @@ class MatrixButler:
         WHERE id=?
         """
         result = list(self._connection.execute(sql, [item]))
-        if len(result) < 1: raise KeyError(item)
+        if len(result) < 1:
+            raise KeyError(item)
 
         item = result[0]
         return MatrixEntry(item['id'], item['description'], item['timestamp'], item['type'])
@@ -346,7 +347,8 @@ class MatrixButler:
         return numbers
 
     def _check_lookup(self, unique_id, n, partition):
-        if partition: n += 1
+        if partition:
+            n += 1
 
         try:
             numbers = self.lookup_numbers(unique_id, squeeze=False)
@@ -476,7 +478,8 @@ class MatrixButler:
         if not matrix.index.equals(self._zone_system):
             matrix = matrix.reindex(self._zone_system, fill_value=0.0)
 
-        if tall: return matrix.stack()
+        if tall:
+            return matrix.stack()
         return matrix
 
     def save_matrix(self, dataframe_or_mfid, unique_id, description="", type_name="",  n_slices=1, partition=False,
@@ -501,10 +504,12 @@ class MatrixButler:
 
         if isinstance(dataframe_or_mfid, pd.DataFrame):
             if not dataframe_or_mfid.index.equals(self._zone_system):
-                if not reindex: raise AssertionError()
+                if not reindex:
+                    raise AssertionError()
                 dataframe_or_mfid = dataframe_or_mfid.reindex_axis(self._zone_system, fill_value=fill_value, axis=0)
             if not dataframe_or_mfid.columns.equals(self._zone_system):
-                if not reindex: raise AssertionError()
+                if not reindex:
+                    raise AssertionError()
                 dataframe_or_mfid = dataframe_or_mfid.reindex_axis(self._zone_system, fill_value=fill_value, axis=1)
         else:
             raise TypeError()
@@ -516,6 +521,21 @@ class MatrixButler:
         self._write_matrix_files(matrix, files, partition)
 
         self._write_matrix_record(unique_id, numbers, description, type_name)
+
+    def query_type(self, type_name):
+        """Gets a list of matrix IDs by their type name
+
+        Args:
+            type_name (str): The type name to query
+
+        Returns:
+            A list of matching IDs
+        """
+        sql = """
+        SELECT id FROM matrices
+        WHERE type=?;
+        """
+        return [item['id'] for item in self._connection.execute(sql, [type_name])]
 
     def matrix_metadata(self, unique_id):
         """Looks up a single matrix record and returns its metadata (description, type, timestamp) in a dictionary
@@ -535,7 +555,8 @@ class MatrixButler:
         WHERE id=?;
         """
         results = list(self._connection.execute(sql, [unique_id]))
-        if not results: raise KeyError(unique_id)
+        if not results:
+            raise KeyError(unique_id)
         row = results[0]
         return dict(row)
 
