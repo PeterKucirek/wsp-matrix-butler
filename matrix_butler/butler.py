@@ -440,16 +440,12 @@ class MatrixButler:
         n_slices, partition = self._validate_slice_args(n_slices, partition)
 
         numbers = self._check_lookup(unique_id, n_slices, partition)
-        files = [open(self._matrix_file(n), mode='wb') for n in numbers]
+        files = [self._matrix_file(n) for n in numbers]
 
-        try:
-            if fill:
-                shape = [len(self._zone_system)] * 2
-                matrix = np.zeros(shape, dtype=np.float32)
-                self._write_matrix_files(matrix, files, partition)
-        finally:
-            for f in files:
-                f.close()
+        if fill:
+            shape = [len(self._zone_system)] * 2
+            matrix = np.zeros(shape, dtype=np.float32)
+            self._write_matrix_files(matrix, files, partition)
 
         self._write_matrix_record(unique_id, numbers, description, type_name)
 
