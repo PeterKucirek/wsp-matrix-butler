@@ -1,15 +1,18 @@
+from __future__ import division
 import os
 from os import path
 import sqlite3 as sqlite
 from datetime import datetime as dt
 from warnings import warn
 from contextlib import contextmanager
+from pkg_resources import parse_version
 
 import numpy as np
 import pandas as pd
 
 from .api import ButlerOverwriteWarning, MatrixEntry
-from .matrices import expand_array, to_fortran, read_fortran_rectangle, coerce_matrix
+
+LEGACY_PANDAS = parse_version(pd.__version__) < parse_version('0.24')
 
 
 class MatrixButler(object):
@@ -390,43 +393,43 @@ class MatrixButler(object):
 
         return n_slices, partition
 
-    def _expand_matrix(self, matrix, n_slices, partition):
-        if n_slices == 1 and not partition:
-            rows, cols = matrix.shape
-            assert rows == cols
-            padding = self._max_zones_fortran - rows
-            if padding > 0:
-                return expand_array(matrix, padding, axis=None)
-            return matrix
-        else:
-            cols = matrix.shape[1]
-            padding = self._max_zones_fortran - cols
-            if padding > 0:
-                return expand_array(matrix, padding, axis=1)
-        return matrix
+    # def _expand_matrix(self, matrix, n_slices, partition):
+    #     if n_slices == 1 and not partition:
+    #         rows, cols = matrix.shape
+    #         assert rows == cols
+    #         padding = self._max_zones_fortran - rows
+    #         if padding > 0:
+    #             return expand_array(matrix, padding, axis=None)
+    #         return matrix
+    #     else:
+    #         cols = matrix.shape[1]
+    #         padding = self._max_zones_fortran - cols
+    #         if padding > 0:
+    #             return expand_array(matrix, padding, axis=1)
+    #     return matrix
 
-    def _write_matrix_files(self, matrix, files, partition):
+    def _write_matrix_files(self, matrix_array, files, partition):
 
-        matrix = self._expand_matrix(matrix, len(files), partition)
+        # matrix = self._expand_matrix(matrix, len(files), partition)
 
         remainder, remainder_file = None, None
         if partition:
             slice_end = self._zone_system.get_loc(self.zone_partition) + 1
 
-            remainder = matrix[slice_end:, :]
+            remainder = matrix_array[slice_end:, :]
             remainder_file = files.pop()  # Remove from the list of files
 
-            matrix = matrix[:slice_end, :]
+            matrix_array = matrix_array[:slice_end, :]
 
         n_slices = len(files)
-        slices = np.array_split(matrix, n_slices, axis=0) if n_slices > 1 else [matrix]
+        slices = np.array_split(matrix_array, n_slices, axis=0) if n_slices > 1 else [matrix_array]
 
         min_index = 1
         for slice_, file_ in zip(slices, files):
-            to_fortran(slice_, file_, self._max_zones_fortran, min_index=min_index, force_square=False)
+            self._to_binary_file(slice_, file_, min_index)
             min_index += slice_.shape[0]
         if partition:
-            to_fortran(remainder, remainder_file, self._max_zones_fortran, min_index=min_index, force_square=False)
+            self._to_binary_file(remainder, remainder_file, min_index)
 
     def init_matrix(self, unique_id, description="", type_name="", fill=True, n_slices=1, partition=False):
         """Registers a new (or zeros an old) matrix with the butler.
@@ -471,8 +474,8 @@ class MatrixButler(object):
         matrices = []
         for number in numbers:
             fp = self._matrix_file(number)
-            data = read_fortran_rectangle(fp, self._max_zones_fortran, zones=self.zone_system)
-            matrices.append(data)
+            subframe = self._from_binary_file(fp)
+            matrices.append(subframe)
         matrix = pd.concat(matrices, axis=0) if is_sliced else matrices[0]
 
         if not matrix.index.equals(self._zone_system):
@@ -482,12 +485,12 @@ class MatrixButler(object):
             return matrix.stack()
         return matrix
 
-    def save_matrix(self, dataframe_or_mfid, unique_id, description="", type_name="",  n_slices=1, partition=False,
+    def save_matrix(self, dataframe_or_array, unique_id, description="", type_name="", n_slices=1, partition=False,
                     reindex=True, fill_value=0.0):
         """Passes a matrix to the butler for safekeeping.
 
         Args:
-            dataframe_or_mfid (DataFrame or str): Specifies the matrix to save. If basestring, it is assumed to
+            dataframe_or_array (DataFrame or str): Specifies the matrix to save. If basestring, it is assumed to
                 refer to a matrix in an Emmebank (see `emmebank`). Otherwise, a square DataFrame is required.
             unique_id (str): The unique identifier for this matrix.
             description (str): A brief description of the matrix.
@@ -502,18 +505,18 @@ class MatrixButler(object):
 
         n_slices, partition = self._validate_slice_args(n_slices, partition)
 
-        if isinstance(dataframe_or_mfid, pd.DataFrame):
-            if not dataframe_or_mfid.index.equals(self._zone_system):
+        if isinstance(dataframe_or_array, pd.DataFrame):
+            if not dataframe_or_array.index.equals(self._zone_system):
                 if not reindex:
                     raise AssertionError()
-                dataframe_or_mfid = dataframe_or_mfid.reindex_axis(self._zone_system, fill_value=fill_value, axis=0)
-            if not dataframe_or_mfid.columns.equals(self._zone_system):
+                dataframe_or_array = dataframe_or_array.reindex_axis(self._zone_system, fill_value=fill_value, axis=0)
+            if not dataframe_or_array.columns.equals(self._zone_system):
                 if not reindex:
                     raise AssertionError()
-                dataframe_or_mfid = dataframe_or_mfid.reindex_axis(self._zone_system, fill_value=fill_value, axis=1)
+                dataframe_or_array = dataframe_or_array.reindex_axis(self._zone_system, fill_value=fill_value, axis=1)
         else:
             raise TypeError()
-        matrix = coerce_matrix(dataframe_or_mfid, allow_raw=True, force_square=True)
+        matrix = coerce_matrix(dataframe_or_array, allow_raw=True, force_square=True)
         assert matrix.shape == (len(self._zone_system),) * 2
 
         numbers = self._check_lookup(unique_id, n_slices, partition)
@@ -593,3 +596,80 @@ class MatrixButler(object):
     def __del__(self):
         self._connection.commit()
         self._connection.close()
+
+    # region matrices
+
+    def _to_binary_file(self, array, file_, min_index=1):
+        assert min_index >= 1
+
+        rows, columns = array.shape
+
+        # Mask the integer binary representation as floating point
+        index = np.arange(min_index, min_index + rows, dtype=np.int32)
+        index_as_float = np.frombuffer(index.tobytes(), dtype=np.float32).reshape(rows, 1)
+
+        to_concat = [index_as_float, array]
+        extra_columns = self._max_zones_fortran - columns
+        if extra_columns > 0:
+            padding = np.zeros(shape=(rows, extra_columns), dtype=np.float32)
+            to_concat.append(padding)
+
+        expanded = np.concatenate(to_concat, axis=1)
+
+        with open(file_, mode='wb') as writer:
+            expanded.tofile(writer)
+
+    def _from_binary_file(self, file_):
+        with open(file_, mode='rb') as reader:
+            raw_floats = np.fromfile(reader, dtype=np.float32)
+
+        rows = len(raw_floats) // (self._max_zones_fortran + 1)
+        assert len(raw_floats) == (rows * (self._max_zones_fortran + 1))
+
+        raw_floats.shape = rows, self._max_zones_fortran + 1
+        row_offsets = np.frombuffer(raw_floats[:, 0].tobytes(), dtype=np.int32) - 1
+        row_index = self.zone_system.take(row_offsets)
+
+        real_columns = len(self.zone_system)
+        matrix = raw_floats[:, 1: real_columns + 1].copy()  # Drop extra columns and make a deep copy to force GC to cleanup the raw
+
+        frame = pd.DataFrame(matrix, index=row_index, columns=self.zone_system)
+        return frame
+
+
+def coerce_matrix(matrix, allow_raw=True, force_square=True):
+    """Infers a NumPy array from given input
+
+    Args:
+        matrix:
+        allow_raw (bool, optional): Defaults to ``True``.
+        force_square (bool, optional): Defaults to ``True``.
+
+    Returns:
+        numpy.ndarray: A 2D ndarray of type float32
+    """
+    if isinstance(matrix, pd.DataFrame):
+        if force_square:
+            assert matrix.index.equals(matrix.columns)
+        return matrix.values.astype(np.float32)
+    elif isinstance(matrix, pd.Series):
+        assert matrix.index.nlevels == 2, "Cannot infer a matrix from a Series with more or fewer than 2 levels"
+        wide = matrix.unstack()
+
+        union = wide.index | wide.columns
+        wide = wide.reindex_axis(union, fill_value=0.0, axis=0).reindex_axis(union, fill_value=0.0, axis=1)
+        if LEGACY_PANDAS:
+            return wide.values.astype(np.float32)
+        else:
+            return wide.to_numpy(copy=True).astype(np.float32)
+
+    if not allow_raw:
+        raise NotImplementedError()
+
+    matrix = np.array(matrix, dtype=np.float32)
+    assert len(matrix.shape) == 2
+    i, j = matrix.shape
+    assert i == j
+
+    return matrix
+    # endregion
