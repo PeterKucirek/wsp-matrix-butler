@@ -672,7 +672,7 @@ class MatrixButler(object):
         row_index = self.zone_system.take(row_offsets[: len(self.zone_system)])  # MLOGIT likes to pad out to max zones, which we don't need.
 
         real_columns = len(self.zone_system)
-        matrix = raw_floats[:, 1: real_columns + 1].copy()  # Drop extra columns and make a deep copy to force GC to cleanup the raw
+        matrix = raw_floats[: len(self.zone_system):, 1: real_columns + 1].copy()  # Drop extra columns and make a deep copy to force GC to cleanup the raw
 
         frame = pd.DataFrame(matrix, index=row_index, columns=self.zone_system)
         return frame
