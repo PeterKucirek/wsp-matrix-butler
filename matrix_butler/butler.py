@@ -597,6 +597,47 @@ class MatrixButler(object):
         self._connection.commit()
         self._connection.close()
 
+    def slice_matrix(self, unique_id, n_slices=1, partition=None):
+        """
+        Slices a matrix into chunks along its rows (on-disk) for use in mutli-processing.
+
+        Does nothing if matrix is already sliced.
+
+        Args:
+            unique_id (str): The ID of the matrix to slice
+            n_slices (int): The number of slices to make
+            partition (bool): Flag whether to partition the matrix before saving, based on self.zone_partition
+        """
+        prior_n_slices = len(self.lookup_numbers(unique_id, squeeze=False))
+        expected_slices = n_slices + 1 if partition else n_slices
+        if prior_n_slices == expected_slices: return  # Do nothing if already sliced to the called number
+
+        n_slices, partition = self._validate_slice_args(n_slices, partition)
+
+        matrix = self.load_matrix(unique_id)
+        metadata = self.matrix_metadata(unique_id)
+
+        with self.batch_operations():
+            self.delete_matrix(unique_id)
+            self.save_matrix(matrix, unique_id, metadata['description'], metadata['type'], n_slices=n_slices,
+                             partition=partition)
+
+    def unslice_matrix(self, unique_id):
+        """
+        "Un-slices" (i.e. concatenates) a sliced matrix in the butler. Does nothing if the matrix is not sliced.
+
+        Args:
+            unique_id (str): The ID of the matrix to slice.
+
+        """
+        if not self.is_sliced(unique_id): return  # Do nothing is matrix is already not sliced
+        matrix = self.load_matrix(unique_id)
+        metadata = self.matrix_metadata(unique_id)
+
+        with self.batch_operations():
+            self.delete_matrix(unique_id)
+            self.save_matrix(matrix, unique_id, metadata['description'], metadata['type'], n_slices=1)
+
     # region matrices
 
     def _to_binary_file(self, array, file_, min_index=1):
