@@ -669,7 +669,7 @@ class MatrixButler(object):
 
         raw_floats.shape = rows, self._max_zones_fortran + 1
         row_offsets = np.frombuffer(raw_floats[:, 0].tobytes(), dtype=np.int32) - 1
-        row_index = self.zone_system.take(row_offsets)
+        row_index = self.zone_system.take(row_offsets[: len(self.zone_system)])  # MLOGIT likes to pad out to max zones, which we don't need.
 
         real_columns = len(self.zone_system)
         matrix = raw_floats[:, 1: real_columns + 1].copy()  # Drop extra columns and make a deep copy to force GC to cleanup the raw
