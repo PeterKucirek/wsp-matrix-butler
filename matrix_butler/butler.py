@@ -504,20 +504,7 @@ class MatrixButler(object):
         """
 
         n_slices, partition = self._validate_slice_args(n_slices, partition)
-
-        if isinstance(dataframe_or_array, pd.DataFrame):
-            if not dataframe_or_array.index.equals(self._zone_system):
-                if not reindex:
-                    raise AssertionError()
-                dataframe_or_array = dataframe_or_array.reindex_axis(self._zone_system, fill_value=fill_value, axis=0)
-            if not dataframe_or_array.columns.equals(self._zone_system):
-                if not reindex:
-                    raise AssertionError()
-                dataframe_or_array = dataframe_or_array.reindex_axis(self._zone_system, fill_value=fill_value, axis=1)
-        else:
-            raise TypeError()
-        matrix = coerce_matrix(dataframe_or_array, allow_raw=True, force_square=True)
-        assert matrix.shape == (len(self._zone_system),) * 2
+        matrix = self._coerce_matrix(dataframe_or_array, reindex=reindex, fill_value=fill_value)
 
         numbers = self._check_lookup(unique_id, n_slices, partition)
         files = [self._matrix_file(n) for n in numbers]
@@ -677,40 +664,22 @@ class MatrixButler(object):
         frame = pd.DataFrame(matrix, index=row_index, columns=self.zone_system)
         return frame
 
+    def _coerce_matrix(self, data, reindex=True, fill_value=0.0):
+        if isinstance(data, pd.DataFrame):
+            if not data.index.equals(self.zone_system):
+                if not reindex: raise AssertionError()
+                func = data.reindex_axis if LEGACY_PANDAS else data.reindex
+                data = func(self.zone_system, axis=0, fill_value=fill_value)
+            if not data.columns.equals(self.zone_system):
+                if not reindex: raise AssertionError()
+                func = data.reindex_axis if LEGACY_PANDAS else data.reindex
+                data = func(self.zone_system, axis=1, fill_value=fill_value)
+            return data.values.astype(np.float32) if LEGACY_PANDAS else data.to_numpy(copy=True).astype(np.float32)
+        elif isinstance(data, np.ndarray):
+            i, j = data.shape
+            assert i == j, "Non-square raw matrices are not supported"
+            assert i == len(self.zone_system), "Matrices must be the same length at the Butler zone system"
+            return data.astype(np.float32)
+        raise NotImplementedError(type(data))
 
-def coerce_matrix(matrix, allow_raw=True, force_square=True):
-    """Infers a NumPy array from given input
-
-    Args:
-        matrix:
-        allow_raw (bool, optional): Defaults to ``True``.
-        force_square (bool, optional): Defaults to ``True``.
-
-    Returns:
-        numpy.ndarray: A 2D ndarray of type float32
-    """
-    if isinstance(matrix, pd.DataFrame):
-        if force_square:
-            assert matrix.index.equals(matrix.columns)
-        return matrix.values.astype(np.float32)
-    elif isinstance(matrix, pd.Series):
-        assert matrix.index.nlevels == 2, "Cannot infer a matrix from a Series with more or fewer than 2 levels"
-        wide = matrix.unstack()
-
-        union = wide.index | wide.columns
-        wide = wide.reindex_axis(union, fill_value=0.0, axis=0).reindex_axis(union, fill_value=0.0, axis=1)
-        if LEGACY_PANDAS:
-            return wide.values.astype(np.float32)
-        else:
-            return wide.to_numpy(copy=True).astype(np.float32)
-
-    if not allow_raw:
-        raise NotImplementedError()
-
-    matrix = np.array(matrix, dtype=np.float32)
-    assert len(matrix.shape) == 2
-    i, j = matrix.shape
-    assert i == j
-
-    return matrix
-    # endregion
+        # endregion
