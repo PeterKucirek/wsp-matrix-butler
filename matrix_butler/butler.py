@@ -563,7 +563,8 @@ class MatrixButler(object):
         numbers = self.lookup_numbers(unique_id, squeeze=False)
         for n in numbers:
             fp = self._matrix_file(n)
-            os.remove(fp)
+            if path.exists(fp):
+                os.remove(fp)
 
         sql = """
         DELETE FROM matrices
