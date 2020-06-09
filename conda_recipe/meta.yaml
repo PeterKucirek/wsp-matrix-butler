@@ -1,6 +1,8 @@
+{% set data = load_setup_py_data() %}
+
 package:
   name: wsp-matrix-butler
-  version: "1.1.0"
+  version: {{ data.get('version') }}
 
 source:
   path: ../
@@ -10,14 +12,20 @@ build:
   noarch: python
 
 requirements:
-  build:
-    - python>=2.7
-    - setuptools
+  host:
+    - python
   run:
-    - python>=2.7
-    - pandas>=0.16
-    - numpy>=1.14
+    - python
+    - pandas >=0.16
+    - numpy >=1.14
 
 about:
   home: https://github.com/wsp-sag/wsp-matrix-butler
-  summary: A SQLite-based mini-file system for organizing legacy binary files for the Greater Golden Horseshoe Model.
+  license: MIT
+  license_file: LICENSE
+  summary: A SQLite-based mini-file system for organizing binary files for the Greater Golden Horseshoe Model.
+
+extra:
+  maintainers:
+    - Brian Cheung
+    - Peter Kucirek
