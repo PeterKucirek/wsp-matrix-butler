@@ -1,18 +1,18 @@
 from __future__ import division
+
 import os
-from os import path
 import sqlite3 as sqlite
 from datetime import datetime as dt
 from warnings import warn
 from contextlib import contextmanager
-from pkg_resources import parse_version
 
 import numpy as np
 import pandas as pd
 
 from .api import ButlerOverwriteWarning, MatrixEntry
 
-LEGACY_PANDAS = parse_version(pd.__version__) < parse_version('0.24')
+_USE_PD_REINDEX = hasattr(pd.DataFrame, 'reindex')
+_USE_PD_TO_NUMPY = hasattr(pd.DataFrame, 'to_numpy')
 
 
 class MatrixButler(object):
@@ -45,13 +45,13 @@ class MatrixButler(object):
         zone_system = pd.Int64Index(zone_system)
         fortran_max_zones = int(fortran_max_zones)
 
-        butler_path = path.join(parent_directory, MatrixButler._SUBDIRECTORY_NAME)
+        butler_path = os.path.join(parent_directory, MatrixButler._SUBDIRECTORY_NAME)
 
-        if not path.exists(butler_path):
+        if not os.path.exists(butler_path):
             os.makedirs(butler_path)
 
-        dbfile = path.join(butler_path, MatrixButler._DB_NAME)
-        db_exists = path.exists(dbfile)  # Connecting to a non-existent file will create the file, so cache this first
+        dbfile = os.path.join(butler_path, MatrixButler._DB_NAME)
+        db_exists = os.path.exists(dbfile)  # Connecting to non-existent file will create the file, so cache this first
         db = sqlite.connect(dbfile)
         db.row_factory = sqlite.Row
 
@@ -66,7 +66,7 @@ class MatrixButler(object):
 
                 for fn in os.listdir(butler_path):
                     if fn.endswith(MatrixButler._MATRIX_EXTENSION):
-                        fp = path.join(butler_path, fn)
+                        fp = os.path.join(butler_path, fn)
                         os.remove(fp)
                 MatrixButler._clear_tables(db)
                 MatrixButler._create_tables(db, zone_system, fortran_max_zones)
@@ -170,11 +170,11 @@ class MatrixButler(object):
         Raises:
             IOError: if a MatrixButler cannot be found at the given parent directory.
         """
-        butler_path = path.join(parent_directory, MatrixButler._SUBDIRECTORY_NAME)
+        butler_path = os.path.join(parent_directory, MatrixButler._SUBDIRECTORY_NAME)
         if not os.path.exists(butler_path):
             raise IOError('No matrix butler found at `%s`' % parent_directory)
 
-        dbfile = path.join(butler_path, MatrixButler._DB_NAME)
+        dbfile = os.path.join(butler_path, MatrixButler._DB_NAME)
         if not os.path.exists(dbfile):
             raise IOError('No matrix butler found at `%s`' % parent_directory)
 
@@ -269,17 +269,13 @@ class MatrixButler(object):
             self._connection.commit()
 
     def _matrix_file(self, n):
-        return path.join(self._path, "mf%s%s" % (n, MatrixButler._MATRIX_EXTENSION))
+        return os.path.join(self._path, "mf%s%s" % (n, MatrixButler._MATRIX_EXTENSION))
 
     @contextmanager
     def batch_operations(self):
-        """Context-manager for writing several matrices in one batch. Reduces write time per matrix by committing 
-        changes to the DB at the end of the batch write. The time savings can be quite significant, as the DB-write is 
-        normally 50% of the time per matrix write.
-
-        Yields: 
-            None
-        """
+        """Context-manager for writing several matrices in one batch. Reduces write time per matrix by committing
+        changes to the DB at the end of the batch write. The time savings can be quite significant, as the DB-write is
+        normally 50% of the time per matrix write."""
         # This snippet is just in case this function is called within its own context (e.g. someone turns on
         # batch mode while it's already on).
         if not self._committing:
@@ -302,10 +298,9 @@ class MatrixButler(object):
             squeeze (bool): If True, and only one matrix number corresponds to the unique ID, then the result will
                 be a single integer. Otherwise, a list of integers is returned.
 
-        Returns: 
+        Returns:
             Int or List[int], depending on results and `squeeze`
         """
-
         sql = """
         SELECT *
         FROM matrix_numbers
@@ -325,12 +320,12 @@ class MatrixButler(object):
         """Checks if a matrix is sliced on-disk or not.
 
         Args:
-            unique_id (str): The ID of the matrix to checl
+            unique_id (str): The ID of the matrix to check
 
-        Returns: 
+        Returns:
             bool: True if matrix is sliced, False otherwise.
 
-        Raises: 
+        Raises:
             KeyError: if unique_id is not in the butler.
         """
         return len(self.lookup_numbers(unique_id, squeeze=False)) > 1
@@ -437,7 +432,7 @@ class MatrixButler(object):
         Args:
             unique_id (str): The unique identifier for this matrix.
             description (str):  A brief description of the matrix.
-            type_name (str): Type categorization of the matrx.
+            type_name (str): Type categorization of the matrix.
             fill (bool): If False, empty (0-byte) files will be initialized. Otherwise, 0-matrix files will be created.
             n_slices (int): Number of slices (on-disk) for multi-processing.
             partition (bool): Flag whether to partition the matrix before saving, based on self.zone_partition
@@ -461,7 +456,7 @@ class MatrixButler(object):
             unique_id (str): The name you gave to the butler for safekeeping.
             tall (bool):
 
-        Returns: 
+        Returns:
             DataFrame or None, depending on whether `target_mfid` is given.
 
         Raises:
@@ -499,8 +494,7 @@ class MatrixButler(object):
             partition (bool): Flag whether to partition the matrix before saving, based on self.zone_partition
             reindex (bool): Flag to indicate if partial matrices are accepted when supplying a DataFrame. If False,
                 AssertionError will be raised when one of the DataFrame's axes doesn't match the Butler's zone system.
-            fill_value (float): The fill value to be used when reindexing (see 'reindex' flag) or filling Emme infinity
-                (see `fill_eminf` flag)
+            fill_value (float): The fill value to be used when reindexing (see 'reindex' flag)
         """
 
         n_slices, partition = self._validate_slice_args(n_slices, partition)
@@ -533,10 +527,10 @@ class MatrixButler(object):
         Args:
             unique_id (str): The unique ID of the matrix to lookup
 
-        Returns: 
+        Returns:
             Dict: corresponding to the matrix record. Keys are 'id', 'description', 'timestamp', and 'type'
 
-        Raises: 
+        Raises:
             KeyError: if unique ID not in the butler.
         """
 
@@ -563,7 +557,7 @@ class MatrixButler(object):
         numbers = self.lookup_numbers(unique_id, squeeze=False)
         for n in numbers:
             fp = self._matrix_file(n)
-            if path.exists(fp):
+            if os.path.exists(fp):
                 os.remove(fp)
 
         sql = """
@@ -586,19 +580,18 @@ class MatrixButler(object):
         self._connection.close()
 
     def slice_matrix(self, unique_id, n_slices=1, partition=None):
-        """
-        Slices a matrix into chunks along its rows (on-disk) for use in mutli-processing.
-
-        Does nothing if matrix is already sliced.
+        """Slices a matrix into chunks along its rows (on-disk) for use in multi-processing. Does nothing if matrix is
+        already sliced.
 
         Args:
             unique_id (str): The ID of the matrix to slice
             n_slices (int): The number of slices to make
-            partition (bool): Flag whether to partition the matrix before saving, based on self.zone_partition
+            partition (bool): Flag whether to partition the matrix before saving, based on `self.zone_partition`
         """
         prior_n_slices = len(self.lookup_numbers(unique_id, squeeze=False))
         expected_slices = n_slices + 1 if partition else n_slices
-        if prior_n_slices == expected_slices: return  # Do nothing if already sliced to the called number
+        if prior_n_slices == expected_slices:
+            return  # Do nothing if already sliced to the called number
 
         n_slices, partition = self._validate_slice_args(n_slices, partition)
 
@@ -611,14 +604,13 @@ class MatrixButler(object):
                              partition=partition)
 
     def unslice_matrix(self, unique_id):
-        """
-        "Un-slices" (i.e. concatenates) a sliced matrix in the butler. Does nothing if the matrix is not sliced.
+        """Un-slices (i.e. concatenates) a sliced matrix in the butler. Does nothing if the matrix is not sliced.
 
         Args:
             unique_id (str): The ID of the matrix to slice.
-
         """
-        if not self.is_sliced(unique_id): return  # Do nothing is matrix is already not sliced
+        if not self.is_sliced(unique_id):
+            return  # Do nothing is matrix is already not sliced
         matrix = self.load_matrix(unique_id)
         metadata = self.matrix_metadata(unique_id)
 
@@ -668,14 +660,16 @@ class MatrixButler(object):
     def _coerce_matrix(self, data, reindex=True, fill_value=0.0):
         if isinstance(data, pd.DataFrame):
             if not data.index.equals(self.zone_system):
-                if not reindex: raise AssertionError()
-                func = data.reindex_axis if LEGACY_PANDAS else data.reindex
+                if not reindex:
+                    raise AssertionError()
+                func = data.reindex if _USE_PD_REINDEX else data.reindex_axis
                 data = func(self.zone_system, axis=0, fill_value=fill_value)
             if not data.columns.equals(self.zone_system):
-                if not reindex: raise AssertionError()
-                func = data.reindex_axis if LEGACY_PANDAS else data.reindex
+                if not reindex:
+                    raise AssertionError()
+                func = data.reindex if _USE_PD_REINDEX else data.reindex_axis
                 data = func(self.zone_system, axis=1, fill_value=fill_value)
-            return data.values.astype(np.float32) if LEGACY_PANDAS else data.to_numpy(copy=True).astype(np.float32)
+            return data.to_numpy(copy=True).astype(np.float32) if _USE_PD_TO_NUMPY else data.values.astype(np.float32)
         elif isinstance(data, np.ndarray):
             i, j = data.shape
             assert i == j, "Non-square raw matrices are not supported"

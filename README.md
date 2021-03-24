@@ -7,8 +7,6 @@
 
 A SQLite-based mini-file system for organizing matrix files for MTO's Greater Golden Horseshoe Model V4.
 
-Matrix Butler is developed and maintained by WSP Canada's Systems Analytics for Policy group.
-
 ## Installation
 
 Matrix Butler can be installed with conda by running:
