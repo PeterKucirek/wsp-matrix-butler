@@ -12,7 +12,7 @@ setup(
     description='A SQLite-based mini-file system for organizing binary files for the Greater Golden Horseshoe Model',
     url='https://github.com/wsp-sag/wsp-matrix-butler',
     author='WSP',
-    maintatiner='Brian Cheung',
+    maintainer='Brian Cheung',
     maintainer_email='brian.cheung@wsp.com',
     classifiers=[
         'License :: OSI Approved :: MIT License'
