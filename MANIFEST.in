@@ -1,0 +1,2 @@
+include versioneer.py
+include matrix_butler/_version.py

@@ -1,14 +1,11 @@
-from os import path
-from pkg_resources import safe_version
 from setuptools import find_packages, setup
 
-version = {}
-with open(path.join(path.dirname(path.realpath(__file__)), 'matrix_butler', 'version.py')) as fp:
-    exec(fp.read(), {}, version)
+import versioneer
 
 setup(
     name='wsp-matrix-butler',
-    version=safe_version(version['__version__']),
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     description='A SQLite-based mini-file system for organizing binary files for the Greater Golden Horseshoe Model',
     url='https://github.com/wsp-sag/wsp-matrix-butler',
     author='WSP',
