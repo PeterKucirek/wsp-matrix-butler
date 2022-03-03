@@ -23,26 +23,26 @@ class MatrixButler(object):
         butler_path, db, zone_system, fortran_max_zones = args
         self._path: Path = butler_path
         self._connection: sqlite3.Connection = db
-        self._zone_system: pd.Int64Index = zone_system
+        self._zone_system: pd.Index = zone_system
         self._max_zones_fortran: int = fortran_max_zones
 
         self._committing: bool = True
 
     @staticmethod
-    def create(parent_directory: Union[str, Path], zone_system: Union[pd.Int64Index, List[int]],
+    def create(parent_directory: Union[str, Path], zone_system: Union[pd.Index, List[int]],
                fortran_max_zones: int) -> MatrixButler:
         """Creates a new (or clears and initializes and existing) MatrixButler.
 
         Args:
             parent_directory (Union[str, Path]): The parent directory in which to keep the Butler.
-            zone_system (Union[pd.Int64Index, List[int]]): The zone system to conform to.
+            zone_system (Union[pd.Index, List[int]]): The zone system to conform to.
             fortran_max_zones (int): The total number of zones expected by the FORTRAN matrix reader.
 
         Returns:
             MatrixButler instance.
         """
         parent_directory = Path(parent_directory)
-        zone_system = pd.Int64Index(zone_system)
+        zone_system = pd.Index(zone_system, dtype=np.int64)
         fortran_max_zones = int(fortran_max_zones)
 
         butler_path = parent_directory / MatrixButler._SUBDIRECTORY_NAME
@@ -73,7 +73,7 @@ class MatrixButler(object):
         return MatrixButler(butler_path, db, zone_system, fortran_max_zones)
 
     @staticmethod
-    def _preload(db: sqlite3.Connection) -> Tuple[int, pd.Int64Index]:
+    def _preload(db: sqlite3.Connection) -> Tuple[int, pd.Index]:
         sql = """
         SELECT *
         FROM properties
@@ -87,7 +87,7 @@ class MatrixButler(object):
         FROM zone_system
         """
         result = list(db.execute(sql))
-        zone_system = pd.Int64Index([int(record['zone']) for record in result])
+        zone_system = pd.Index([int(record['zone']) for record in result], dtype=np.int64)
 
         return fortran_max_zones, zone_system
 
@@ -99,7 +99,7 @@ class MatrixButler(object):
         db.commit()
 
     @staticmethod
-    def _create_tables(db: sqlite3.Connection, zone_system: pd.Int64Index, fortran_max_zones: int):
+    def _create_tables(db: sqlite3.Connection, zone_system: pd.Index, fortran_max_zones: int):
         sql = """
         CREATE TABLE properties(
         name VARCHAR NOT NULL PRIMARY KEY,
@@ -241,7 +241,7 @@ class MatrixButler(object):
         return df
 
     @property
-    def zone_system(self) -> pd.Int64Index:
+    def zone_system(self) -> pd.Index:
         return self._zone_system[...]  # Ellipses to make a shallow copy
 
     @property
