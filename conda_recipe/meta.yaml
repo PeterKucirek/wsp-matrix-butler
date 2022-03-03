@@ -15,9 +15,9 @@ requirements:
   host:
     - python
   run:
-    - python
-    - pandas >=0.16
-    - numpy >=1.14
+    - python >=3.7
+    - pandas >=0.24
+    - numpy
 
 about:
   home: https://github.com/wsp-sag/wsp-matrix-butler
@@ -28,4 +28,3 @@ about:
 extra:
   maintainers:
     - Brian Cheung
-    - Peter Kucirek

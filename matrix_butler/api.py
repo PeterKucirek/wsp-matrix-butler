@@ -6,7 +6,7 @@ class MatrixEntry(object):
         self.uid, self.description, self.timestamp, self.type_name = args
 
     def __repr__(self):
-        return "MatrixEntry('%s')" % self.uid
+        return f"MatrixEntry('{self.uid}')"
 
     def __str__(self):
         return self.uid
@@ -14,4 +14,3 @@ class MatrixEntry(object):
 
 class ButlerOverwriteWarning(RuntimeWarning):
     pass
-
