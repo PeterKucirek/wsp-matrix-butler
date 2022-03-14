@@ -271,7 +271,7 @@ class MatrixButler(object):
             self._connection.commit()
 
     def _matrix_file(self, n: int) -> Path:
-        return self._path / f'"mf{n}{MatrixButler._MATRIX_EXTENSION}"'
+        return self._path / f'mf{n}{MatrixButler._MATRIX_EXTENSION}'
 
     @contextmanager
     def batch_operations(self) -> Generator[None, None, None]:
