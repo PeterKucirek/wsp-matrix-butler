@@ -362,7 +362,7 @@ class MatrixButler(object):
 
         return numbers
 
-    def _write_matrix_record(self, unique_id: str, numbers: int, description: str, type_name: str):
+    def _write_matrix_record(self, unique_id: str, numbers: List[int], description: str, type_name: str):
         timestamp = dt.now()
         sql = """
         INSERT OR REPLACE INTO matrices
