@@ -26,6 +26,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 _version.py
+rattler-build/output/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

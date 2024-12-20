@@ -18,6 +18,7 @@ build:
 requirements:
   host:
     - python >=3.7
+    - pip
     - setuptools >=64
     - setuptools-scm >=8
   run:
@@ -26,7 +27,7 @@ requirements:
     - pandas >=0.24
 
 about:
-  home: ${{ git_repo_url }}
+  homepage: ${{ git_repo_url }}
   license: MIT
   license_file: LICENSE
   summary: A SQLite-based mini-file system for organizing binary files for the Greater Golden Horseshoe Model
