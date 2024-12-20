@@ -26,6 +26,9 @@ Issues = "https://github.com/wsp-sag/wsp-matrix-butler/issues"
 requires = ["setuptools>=64", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
+[dependency-groups]
+dev = ["build>=1.2.2.post1,<2", "twine>=6.0.1,<7"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
@@ -40,3 +43,6 @@ platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 wsp_matrix_butler = { path = ".", editable = true }
 
 [tool.pixi.tasks]
+
+[tool.pixi.environments]
+dev = ["dev"]
