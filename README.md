@@ -29,3 +29,8 @@ butler = MatrixButler.connect("path/to/cache")
 # List the contents (matrices) available in the MatrixButler instance
 butler.list_matrices()
 ```
+
+## Development
+
+Development of the MatrixButler uses [pixi](https://pixi.sh/) for Python package management and [rattler-build](https://rattler.build/) for package building.
+
