@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+import sqlite3
 from contextlib import contextmanager
 from datetime import datetime as dt
 from pathlib import Path
-import sqlite3
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 from warnings import warn
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 from .api import ButlerOverwriteWarning, MatrixEntry
 
@@ -34,8 +35,8 @@ class MatrixButler(object):
         """Creates a new (or clears and initializes and existing) MatrixButler.
 
         Args:
-            parent_directory (Union[str, Path]): The parent directory in which to keep the Butler.
-            zone_system (Union[pd.Index, List[int]]): The zone system to conform to.
+            parent_directory (str | Path): The parent directory in which to keep the Butler.
+            zone_system (pd.Index | List[int]): The zone system to conform to.
             fortran_max_zones (int): The total number of zones expected by the FORTRAN matrix reader.
 
         Returns:
@@ -405,7 +406,7 @@ class MatrixButler(object):
     #             return expand_array(matrix, padding, axis=1)
     #     return matrix
 
-    def _write_matrix_files(self, matrix_array: np.ndarray, files: List[Path], partition: bool):
+    def _write_matrix_files(self, matrix_array: NDArray, files: List[Path], partition: bool):
 
         # matrix = self._expand_matrix(matrix, len(files), partition)
 
@@ -483,13 +484,13 @@ class MatrixButler(object):
             return matrix.stack()
         return matrix
 
-    def save_matrix(self, dataframe_or_array: Union[pd.DataFrame, np.ndarray], unique_id: str, *, description: str = "",
+    def save_matrix(self, dataframe_or_array: Union[pd.DataFrame, NDArray], unique_id: str, *, description: str = "",
                     type_name: str = "", n_slices: int = 1, partition: bool = False, reindex: bool = True,
                     fill_value: float = 0.0):
         """Passes a matrix to the butler for safekeeping.
 
         Args:
-            dataframe_or_array (Union[pd.DataFrame, np.ndarray]): Specifies the matrix to save. Must be square in shape.
+            dataframe_or_array (pd.DataFrame | NDArray): Specifies the matrix to save. Must be square in shape.
             unique_id (str): The unique identifier for this matrix.
             description (str): A brief description of the matrix.
             type_name (str): The string type
@@ -623,7 +624,7 @@ class MatrixButler(object):
 
     # region matrices
 
-    def _to_binary_file(self, array: np.ndarray, file_: Path, min_index: int = 1):
+    def _to_binary_file(self, array: NDArray, file_: Path, min_index: int = 1):
         assert min_index >= 1
 
         rows, columns = array.shape
@@ -660,8 +661,8 @@ class MatrixButler(object):
         frame = pd.DataFrame(matrix, index=row_index, columns=self.zone_system)
         return frame
 
-    def _coerce_matrix(self, data: Union[pd.DataFrame, np.ndarray], reindex: bool = True,
-                       fill_value: float = 0.0) -> np.ndarray:
+    def _coerce_matrix(self, data: Union[pd.DataFrame, NDArray], reindex: bool = True,
+                       fill_value: float = 0.0) -> NDArray:
         if isinstance(data, pd.DataFrame):
             if not data.index.equals(self.zone_system):
                 if not reindex:
@@ -679,4 +680,4 @@ class MatrixButler(object):
             return data.astype(np.float32)
         raise NotImplementedError(type(data))
 
-        # endregion
+    # endregion
