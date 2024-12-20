@@ -1,0 +1,32 @@
+context:
+  name: wsp-matrix-butler
+  git_repo_url: https://github.com/wsp-sag/wsp-matrix-butler
+  latest_tag: ${{ git.latest_tag( git_repo_url ) }}
+
+package:
+  name: ${{ name }}
+  version: ${{ latest_tag }}
+
+source:
+  git: ${{ git_repo_url }}
+  tag: ${{ latest_tag }}
+
+build:
+  noarch: python
+  script: pip install . -v
+
+requirements:
+  host:
+    - python >=3.7
+    - setuptools >=64
+    - setuptools-scm >=8
+  run:
+    - python >=3.7
+    - numpy >=1.21
+    - pandas >=0.24
+
+about:
+  home: ${{ git_repo_url }}
+  license: MIT
+  license_file: LICENSE
+  summary: A SQLite-based mini-file system for organizing binary files for the Greater Golden Horseshoe Model

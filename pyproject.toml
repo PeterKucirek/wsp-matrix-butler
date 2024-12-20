@@ -1,0 +1,42 @@
+[project]
+name = "wsp-matrix-butler"
+dynamic = ["version"]
+authors = [
+    { name = "Brian Cheung", email = "brian.cheung@wsp.com"}
+]
+description = "A SQLite-based mini-file system for organizing binary files for the Greater Golden Horseshoe Model"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3"
+]
+dependencies = [
+    'pandas>=0.24',
+    'numpy>=1.21'
+]
+requires-python = ">= 3.7"
+
+[project.urls]
+Homepage = "https://github.com/wsp-sag/wsp-matrix-butler"
+Issues = "https://github.com/wsp-sag/wsp-matrix-butler/issues"
+
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+version_file = "src/wsp_matrix_butler/_version.py"
+
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+[tool.pixi.pypi-dependencies]
+wsp_matrix_butler = { path = ".", editable = true }
+
+[tool.pixi.tasks]
